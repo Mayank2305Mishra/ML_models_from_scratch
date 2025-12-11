@@ -80,3 +80,46 @@ class LinearRegression:
         print(f"Bias: {self.bias}")
         print(f"Learning Rate: {self.alpha}")
         print(f"Epochs: {self.epochs}")
+        
+class PolynomialRegression(LinearRegression):
+    def __init__(self, degree=2, alpha=0.01, epochs=1000):
+        super().__init__(alpha, epochs)
+        self.degree = degree
+    def polynomial_features_multi(self,x, degree):
+        n_samples, n_features = x.shape
+        x_poly = [np.ones(n_samples)]
+        for d in range(1, degree + 1):
+            for feature_indices in self.generate_combinations(n_features, d):
+                feature = np.prod(x[:, feature_indices], axis=1)
+                x_poly.append(feature)
+        return np.column_stack(x_poly)
+    
+    def generate_combinations(self,n_features, degree):
+        if degree == 1:
+            return [[i] for i in range(n_features)]
+        combinations = []
+        for i in range(n_features):
+            for sub_combination in self.generate_combinations(n_features, degree - 1):
+                if i <= sub_combination[0]:
+                    combinations.append([i] + sub_combination)
+        return combinations
+    
+    def fit(self, x, y):
+        x_poly = self.polynomial_features_multi(x, self.degree)
+        self.weights, self.bias = self.gradient_descent(x_poly, y)
+        return self.weights, self.bias
+    def predict(self, x):
+        x_poly = self.polynomial_features_multi(x, self.degree)
+        return np.dot(x_poly, self.weights) + self.bias
+    def plot_cost(self):
+        return super().plot_cost()
+    def plot_regression_line(self, x, y):
+        plt.scatter(y, y, color='blue', label='Data points')
+        plt.scatter(y, self.predict(x), color='red', label='Regression line')
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.title("Polynomial Regression Fit")
+        plt.legend()
+        plt.show()
+    def evaluation_metrics(self, y_true, y_pred):
+        return super().evaluation_metrics(y_true, y_pred)
