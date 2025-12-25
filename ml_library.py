@@ -80,7 +80,7 @@ class LinearRegression:
         print(f"Bias: {self.bias}")
         print(f"Learning Rate: {self.alpha}")
         print(f"Iterations: {self.iters}")
-        
+
 class PolynomialRegression(LinearRegression):
     def __init__(self, degree=2, alpha=0.01, iters=1000):
         super().__init__(alpha, iters)
@@ -210,10 +210,20 @@ class LogisticRegression:
         plt.show()
 
 class NeuralNetwork:
-    def __init__(self ,learning_rate=0.01 ,epochs=1000 , loss_function='mse'):
+    def __init__(self ,learning_rate=0.01 ,epochs=1000 , loss_function='mse', initialization='random', optimizer='adam',beta1=0.9,beta2=0.999,epsilon=1e-8):
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.loss_function = loss_function
+        self.J_history = []
+        self.initialization = initialization
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
+        self.optimizer = optimizer
+        self.v ={}
+        self.s ={}
+        self.t = 0
+
     def sigmoid(self, z):
         return 1 / (1 + np.exp(-z))
     def sigmoid_derivative(self, z):
@@ -254,6 +264,37 @@ class NeuralNetwork:
             parameters['b' + str(l)] = np.zeros((1, layer_dims[l]))
         model['parameters'] = parameters
         return model
+    def initialize_parameters_he(self, model , input_dim):
+        parameters = {}
+        layer_dims = [input_dim]
+        for layer in model['layers']:
+            layer_dims.append(layer['units'])
+        L = len(layer_dims)
+        for l in range(1, L):
+            parameters['w' + str(l)] = np.random.randn(layer_dims[l-1], layer_dims[l]) * np.sqrt(2 / layer_dims[l-1])
+            parameters['b' + str(l)] = np.zeros((1, layer_dims[l]))
+        model['parameters'] = parameters
+        return model
+    def initialize_parameters_xavier(self, model , input_dim):
+        parameters = {}
+        layer_dims = [input_dim]
+        for layer in model['layers']:
+            layer_dims.append(layer['units'])
+        L = len(layer_dims)
+        for l in range(1, L):
+            parameters['w' + str(l)] = np.random.randn(layer_dims[l-1], layer_dims[l]) * np.sqrt(1 / layer_dims[l-1])
+            parameters['b' + str(l)] = np.zeros((1, layer_dims[l]))
+        model['parameters'] = parameters
+        return model
+    def initialize_adam_parameters(self, model):
+        """Initialize first and second moment estimates for Adam optimizer"""
+        L = len(model['layers'])
+        for l in range(1, L + 1):
+            self.v['dw' + str(l)] = np.zeros_like(model['parameters']['w' + str(l)])
+            self.v['db' + str(l)] = np.zeros_like(model['parameters']['b' + str(l)])
+            self.s['dw' + str(l)] = np.zeros_like(model['parameters']['w' + str(l)])
+            self.s['db' + str(l)] = np.zeros_like(model['parameters']['b' + str(l)])
+
     def forward_propagation(self, X, model):
         parameters = model['parameters']
         caches = {'a0': X}
@@ -296,14 +337,14 @@ class NeuralNetwork:
         for l in reversed(range(1, L + 1)):
             a_prev = caches['a' + str(l-1)]
             w = parameters['w' + str(l)]
-            
+
             grads['dw' + str(l)] = np.dot(a_prev.T, dz)
             grads['db' + str(l)] = np.sum(dz, axis=0, keepdims=True)
-            
+
             if l > 1:
                 da_prev = np.dot(dz, w.T)
                 z_prev = caches['z' + str(l-1)]
-                
+
                 if model['layers'][l-2]['activation'] == 'relu':
                     dz = da_prev * self.relu_derivative(z_prev)
                 elif model['layers'][l-2]['activation'] == 'sigmoid':
@@ -312,32 +353,88 @@ class NeuralNetwork:
                     dz = da_prev
                 elif model['layers'][l-2]['activation'] == 'softmax':
                     dz = da_prev * self.softmax_derivative(z_prev)
-        
+
         return grads
 
     def update_parameters(self, model, grads):
         parameters = model['parameters']
         L = len(model['layers'])
-        for l in range(1, L + 1):
-            parameters['w' + str(l)] -= self.learning_rate * grads['dw' + str(l)]
-            parameters['b' + str(l)] -= self.learning_rate * grads['db' + str(l)]
-        model['parameters'] = parameters
+        if self.optimizer == 'adam':
+            self.t +=1
+            for l in range(1, L+1):
+                # Update biased first moment estimate (momentum)
+                self.v["dw" + str(l)] = (
+                    self.beta1 * self.v["dw" + str(l)]
+                    + (1 - self.beta1) * grads["dw" + str(l)]
+                )
+                self.v["db" + str(l)] = (
+                    self.beta1 * self.v["db" + str(l)]
+                    + (1 - self.beta1) * grads["db" + str(l)]
+                )
+
+                # Update biased second raw moment estimate (RMSprop)
+                self.s["dw" + str(l)] = self.beta2 * self.s["dw" + str(l)] + (
+                    1 - self.beta2
+                ) * (grads["dw" + str(l)] ** 2)
+                self.s["db" + str(l)] = self.beta2 * self.s["db" + str(l)] + (
+                    1 - self.beta2
+                ) * (grads["db" + str(l)] ** 2)
+
+                # Compute bias-corrected first moment estimate
+                v_corrected_dw = self.v["dw" + str(l)] / (1 - self.beta1**self.t)
+                v_corrected_db = self.v["db" + str(l)] / (1 - self.beta1**self.t)
+
+                # Compute bias-corrected second raw moment estimate
+                s_corrected_dw = self.s["dw" + str(l)] / (1 - self.beta2**self.t)
+                s_corrected_db = self.s["db" + str(l)] / (1 - self.beta2**self.t)
+
+                # Update parameters
+                parameters["w" + str(l)] -= (
+                    self.learning_rate
+                    * v_corrected_dw
+                    / (np.sqrt(s_corrected_dw) + self.epsilon)
+                )
+                parameters["b" + str(l)] -= (
+                    self.learning_rate
+                    * v_corrected_db
+                    / (np.sqrt(s_corrected_db) + self.epsilon)
+                )
+        else:
+            for l in range(1, L + 1):
+                parameters['w' + str(l)] -= self.learning_rate * grads['dw' + str(l)]
+                parameters['b' + str(l)] -= self.learning_rate * grads['db' + str(l)]
+            model['parameters'] = parameters
         return model
+
     def fit(self, X, y, model):
         input_dim = X.shape[1]
-        model = self.initialize_parameters(model, input_dim)
+        if self.initialization == 'he':
+            model = self.initialize_parameters_he(model, input_dim)
+        elif self.initialization == 'xavier':
+            model = self.initialize_parameters_xavier(model, input_dim)
+        else:
+            model = self.initialize_parameters(model, input_dim)
+
+        if self.optimizer == 'adam':
+            self.t = 0
+            self.initialize_adam_parameters(model=model)
+
         for epoch in range(self.epochs):
             y_pred, caches = self.forward_propagation(X, model)
             grads = self.backward_propagation(X, y, model, caches)
             model = self.update_parameters(model, grads)
+            if self.loss_function == 'mse':
+                loss = mean_squared_error(y, y_pred)
+            elif self.loss_function == 'binary_cross_entropy':
+                loss = cross_entropy_loss(y, y_pred)
+            elif self.loss_function == 'categorical_cross_entropy':
+                loss = categorical_cross_entropy_loss(y, y_pred)
+            
+            self.J_history.append(loss)
+
             if epoch % math.ceil(self.epochs / 10) == 0:
-                if self.loss_function == 'mse':
-                    loss = mean_squared_error(y, y_pred)
-                elif self.loss_function == 'binary_cross_entropy':
-                    loss = cross_entropy_loss(y, y_pred)
-                elif self.loss_function == 'categorical_cross_entropy':
-                    loss = categorical_cross_entropy_loss(y, y_pred)
                 print(f"Epoch {epoch}: Loss {loss}")
+
         return model
     def predict(self, X, model):
         y_pred, _ = self.forward_propagation(X, model)
@@ -363,6 +460,14 @@ class NeuralNetwork:
             print(f"Recall: {recall}")
             print(f"F1 Score: {f1}")
             return accuracy, precision, recall, f1
+    def plot_loss(self):
+        plt.plot(self.J_history)
+        plt.xlabel("No. of epochs")
+        plt.ylabel("Loss")
+        plt.title("Loss vs epochs")
+        plt.show()
+
+
 def train_test_split(X, y, test_size=0.2):
     n_samples = len(X)
     n_test = int(test_size * n_samples)
