@@ -39,3 +39,25 @@ def confusion_matrix(y_true, y_pred):
     fp = np.sum((y_true == 0) & (y_pred == 1))
     fn = np.sum((y_true == 1) & (y_pred == 0))
     return np.array([[tn, fp],[fn, tp]])
+def classification_report(y_true, y_pred):
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    accuracy = accuracy_score(y_true, y_pred)
+    report = {
+        'precision': precision,
+        'recall': recall,
+        'f1-score': f1,
+        'accuracy': accuracy
+    }
+    return report
+def cross_entropy_loss(y_true, y_pred):
+    epsilon = 1e-15
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    ce_loss = -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+    return ce_loss
+def categorical_cross_entropy_loss(y_true, y_pred):
+    epsilon = 1e-15
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    cce_loss = -np.mean(np.sum(y_true * np.log(y_pred), axis=1))
+    return cce_loss
