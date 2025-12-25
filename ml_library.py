@@ -452,9 +452,9 @@ class NeuralNetwork:
             return mse, rmse, mae, r2
         elif self.loss_function in ['binary_cross_entropy', 'categorical_cross_entropy']:
             accuracy = accuracy_score(y_true, np.round(y_pred))
-            precision = precision_score(y_true, np.round(y_pred), average='weighted')
-            recall = recall_score(y_true, np.round(y_pred), average='weighted')
-            f1 = f1_score(y_true, np.round(y_pred), average='weighted')
+            precision = precision_score(y_true, np.round(y_pred))
+            recall = recall_score(y_true, np.round(y_pred))
+            f1 = f1_score(y_true, np.round(y_pred))
             print(f"Accuracy: {accuracy}")
             print(f"Precision: {precision}")
             print(f"Recall: {recall}")
@@ -487,3 +487,8 @@ def z_score_normalization(X):
     std = np.std(X, axis=0, ddof=0) #ddof=0 for population std , used in SKlearn
     X_normalized = (X - mean) / std
     return X_normalized
+
+def one_hot_encode(y):
+    y = y.astype(int).flatten()
+    num_class = np.max(y) + 1
+    return np.eye(num_class)[y]
