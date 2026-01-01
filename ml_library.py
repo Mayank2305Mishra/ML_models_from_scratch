@@ -467,6 +467,123 @@ class NeuralNetwork:
         plt.title("Loss vs epochs")
         plt.show()
 
+class Node:
+    def __init__(self, threshold = None , feature_index= None , left = None , right = None , info_gain = None , value = None ):
+        self.threshold = threshold
+        self.feature_index = feature_index
+        self.left = left
+        self.right = right
+        self.info_gain = info_gain
+        self.value = value
+
+class DecisionTreeClassifier:
+    def __init__(self , min_sample_split = 2 , max_depth = 2 , mode = 'gini'):
+        self.root = None
+        self.min_sample_split = min_sample_split
+        self.max_depth = max_depth
+        self.mode = mode
+    def build_tree(self , dataset, curr_depth = 0):
+        X , y = dataset[:,:-1], dataset[:,-1]
+        m , n = X.shape
+        if m >= self.min_sample_split and curr_depth <= self.max_depth:
+            best_split = self.get_best_split(dataset , m , n)
+            if best_split['info_gain'] > 0:
+                left_subtree = self.build_tree(
+                    best_split['left_split'],
+                    curr_depth+1
+                )
+                right_subtree = self.build_tree(
+                    best_split["right_split"],
+                    curr_depth + 1,
+                )
+                return Node(feature_index=best_split["feature_index"], threshold=best_split["threshold"], 
+                            left=left_subtree, right=right_subtree, info_gain=best_split["info_gain"])
+        leaf_value = self.calculate_leaf_value(y)
+        return Node(value=leaf_value)
+    def get_best_split(self , dataset , num_samples , num_features):
+        best_split = {}
+        max_info_gain = -float('inf')
+        for feature_index in range(num_features):
+            feature_values = dataset[:feature_index]
+            threshold_vals = np.unique(feature_values)
+            for threshold in threshold_vals:
+                left_split , right_split = self.split(dataset , feature_index , threshold)
+                if len(left_split) > 0 and len(right_split)> 0:
+                    left_y , right_y = left_split[: , -1], right_split[: , -1]
+                    curr_info_gain = self.information_gain(dataset[:,-1] , left_y , right_y)
+                    if curr_info_gain > max_info_gain:
+                        best_split["feature_index"] = feature_index
+                        best_split["threshold"] = threshold
+                        best_split["left_split"] = left_split
+                        best_split["right_split"] = right_split
+                        best_split["info_gain"] = curr_info_gain
+                        max_info_gain = curr_info_gain
+        return best_split
+
+    def split(self , dataset, feature_index , threshold):
+        left_split = np.array(
+            [row for row in dataset if row[feature_index] <= threshold]
+        )
+        right_split = np.array(
+            [row for row in dataset if row[feature_index] > threshold]
+        )
+        return left_split , right_split
+
+    def information_gain(self , parent , l_child , r_child ):
+        w_left = len(l_child)/len(parent)
+        w_right = len(r_child)/len(parent)
+        if self.mode == 'gini':
+            gain = self.gini(parent)  - (w_left * self.gini(l_child) + w_right * self.gini(r_child))
+        elif self.mode == 'entropy':
+            gain = self.entropy(parent) - (w_left * self.entropy(l_child) + w_right * self.entropy(r_child))
+        return gain
+
+    def entropy(self , y):
+        class_labels = np.unique(y)
+        entropy = 0
+        for cls in class_labels:
+            p_cls = len(y[y==cls])/len(y)
+            entropy +=  -p_cls * np.log2(p_cls)
+        return entropy
+
+    def gini(self , y):
+        class_labels = np.unique(y)
+        gini = 0
+        for cls in class_labels:
+            p_cls = len(y[y==cls])/ len(y)
+            gini += p_cls**2
+        return 1-gini
+
+    def calculate_leaf_value(self, Y):
+        Y = list(Y)
+        return max(Y , key=Y.count)
+    def fit(self , X , y):
+        dataset = np.concatenate((X, y), axis=1)
+        self.root = self.build_tree(dataset)
+    def predict(self, X):
+        preditions = [self.make_prediction(x, self.root) for x in X]
+        return preditions
+
+    def make_prediction(self, x, tree):
+        if tree.value!=None: return tree.value
+        feature_val = x[tree.feature_index]
+        if feature_val<=tree.threshold:
+            return self.make_prediction(x, tree.left)
+        else:
+            return self.make_prediction(x, tree.right)
+    def evaluation_metrics(self,y_true , y_pred):
+        accuracy = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred)
+        recall = recall_score(y_true, y_pred)
+        f1 = f1_score(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred)
+        print(f"Accuracy: {accuracy}")
+        print(f"Precision: {precision}")
+        print(f"Recall: {recall}")
+        print(f"F1 Score: {f1}")
+        print(f"Confusion Matrix: {cm}")
+        return accuracy, precision, recall , f1 ,cm
+
 
 def train_test_split(X, y, test_size=0.2):
     n_samples = len(X)
