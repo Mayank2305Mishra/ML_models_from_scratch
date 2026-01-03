@@ -584,6 +584,40 @@ class DecisionTreeClassifier:
         print(f"Confusion Matrix: {cm}")
         return accuracy, precision, recall , f1 ,cm
 
+class KNN:
+    def __init__(self , k = 3):
+        self.k = k
+    def fit(self, X , y):
+        self.X_train = X
+        self.y_train = y
+    def distance(self , a , b):
+        return np.sqrt(np.sum(np.square(a-b)))
+    def predict(self, X):
+        pred = []
+        for x_pred in X:
+            distances_train = [self.distance(x_pred, x_train) for x_train in self.X_train]
+            k_indices = np.argsort(distances_train)[:self.k]
+            k_labels = [self.y_train[i] for i in k_indices]
+            pred.append(max(set(k_labels) , key=k_labels.count))
+        return np.array(pred)
+    def evaluation_metrics(self , y_true , y_pred):
+        accuracy = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred)
+        recall = recall_score(y_true, y_pred)
+        f1 = f1_score(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred)
+        print(f"Accuracy: {accuracy}")
+        print(f"Precision: {precision}")
+        print(f"Recall: {recall}")
+        print(f"F1 Score: {f1}")
+        print(f"Confusion Matrix:\n{cm}")
+        plt.imshow(cm, cmap='Blues')
+        plt.colorbar()
+        plt.xlabel("Predicted") 
+        plt.ylabel("Actual")
+        plt.title("Confusion Matrix")
+        return accuracy, precision, recall, f1, cm
+
 
 def train_test_split(X, y, test_size=0.2):
     n_samples = len(X)
