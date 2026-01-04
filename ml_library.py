@@ -618,6 +618,47 @@ class KNN:
         plt.title("Confusion Matrix")
         return accuracy, precision, recall, f1, cm
 
+class KMeansClustering:
+    def __init__(self, k=3, max_iters=100):
+        self.k = k
+        self.max_iters = max_iters
+        self.centroids = None
+    def initialize_centroids(self, X):
+        random_indices = np.random.choice(X.shape[0], self.k, replace=False)
+        self.centroids = X[random_indices]
+    def assign_clusters(self, X):
+        distances = np.array([[np.linalg.norm(x - centroid) for centroid in self.centroids] for x in X])
+        return np.argmin(distances, axis=1)
+    def update_centroids(self, X, labels):
+        new_centroids = np.array([X[labels == k].mean(axis=0) for k in range(self.k)])
+        return new_centroids
+    def fit(self, X):
+        self.initialize_centroids(X)
+        for _ in range(self.max_iters):
+            labels = self.assign_clusters(X)
+            new_centroids = self.update_centroids(X, labels)
+            if np.linalg.norm(self.centroids - new_centroids) == 0:
+                break
+            self.centroids = new_centroids
+    def predict(self, X):
+        return self.assign_clusters(X)
+    def plot_clusters(self, X):
+        labels = self.predict(X)
+        plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis')
+        plt.scatter(self.centroids[:, 0], self.centroids[:, 1], s=300, c='red', marker='X')
+        plt.title("K-Means Clustering")
+        plt.show()
+    def plot_elbow_method(self, X, max_k=10):
+        wcss = []
+        for k in range(1, max_k + 1):
+            kmeans = KMeansClustering(k=k)
+            kmeans.fit(X)
+            wcss.append(sum(np.min([[np.linalg.norm(x - centroid) for centroid in kmeans.centroids] for x in X], axis=1)))
+        plt.plot(range(1, max_k + 1), wcss, marker='o')
+        plt.title("Elbow Method")
+        plt.xlabel("Number of clusters (k)")
+        plt.ylabel("WCSS")
+        plt.show()
 
 def train_test_split(X, y, test_size=0.2):
     n_samples = len(X)

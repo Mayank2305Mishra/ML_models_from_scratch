@@ -29,6 +29,12 @@ All of these alogrithms were build from scratch
 
 - `./datasets` - conatains all of the datasets (train + test) provided for the alogrithms.
 -  `./outputs` - contains all of the outputs of test dataset after the predictions were made from the models.
-- 
-- 
+- `ml_library.py` - python library which have all of the alogrithms and important function, all coded from scratch.
+
+- `ml_metrics_eval.py` - python library which contains the functions for evaluation metrics of models.
+
+- `*.ipynb` - python notebook where the all of the models were trained and tested on the dataset provided.
+---
+
+
 
