@@ -684,3 +684,12 @@ def one_hot_encode(y):
     y = y.astype(int).flatten()
     num_class = np.max(y) + 1
     return np.eye(num_class)[y]
+
+def pca(x, n):
+    x_mean = x - x.mean(axis=0)
+    cov_matrix = np.cov(x_mean, rowvar=False)
+    eigenval, eigenvectors = np.linalg.eigh(cov_matrix)
+    sorted_indices = np.argsort(eigenval)[::-1]
+    max_eigen_vectors = eigenvectors[:, sorted_indices[:n]]
+    projected_value = np.dot(x_mean, max_eigen_vectors)
+    return projected_value
