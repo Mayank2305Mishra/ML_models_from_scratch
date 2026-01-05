@@ -36,5 +36,46 @@ All of these alogrithms were build from scratch
 - `*.ipynb` - python notebook where the all of the models were trained and tested on the dataset provided.
 ---
 
+```
+All of the alogrithms were implemented using the class method 
+from Object Oriented Programming (OOPs).
+```
+---
+### Models and Algorithms 
 
+1. <details>
+   <summary><b>Linear Regression</b></summary>
+
+   <br/>
+
+   Linear Regression is one of the most fundamental machine learning models.  
+   It tries to fit the maximum number of data points using a straight line,
+   plane, or hyperplane based on the shape of the input features.
+   > Here we create a Linear Regression class which have hyper-parameter like alpha (learning rate , number of iterations).
+
+   ```python
+   class LinearRegression:
+       def __init__(self, alpha=0.01, iters=1000):
+           self.alpha = alpha
+           self.iters = iters
+           self.weights = None
+           self.bias = None
+           self.J_history = []
+    ```
+    > 1. Cost Function : This function calculates the cost/ loss function for the model. Our goal is to minimize this function by changing values of w and b.
+    
+    `J(w,b) = 1/m * sum(x.w + b - y)**2 `
+
+    ```python
+    def cost_function(self, x , y):
+        m = x.shape[0]
+        cost = 0
+        for i in range(m):
+            err = (np.dot(x[i], self.weights) + self.bias) - y[i]
+            cost += err**2
+        return cost/(2*m)
+    ```
+    
+
+</details>
 
